@@ -1,33 +1,13 @@
-extern crate num;
-extern crate image;
+extern crate num_complex;
 
-use num::complex::Complex;
-use image::{GenericImageView, DynamicImage, ImageBuffer, Rgba};
+mod paon;
 
+use paon::Image;
+use num_complex::Complex;
+use crate::paon::Color;
 
 type RPoint = Complex<f64>;
 type SPoint = (u32, u32);
-/*
-type Color = (u8, u8, u8);
-type Image = Vec<Color>;
-
-
-fn print_ppm(image : Vec<Color>, size : (u32, u32)) {
-    assert_eq!(image.len(), (size.0 * size.1) as usize);
-
-    // ppm header
-    println!("P3");  // specify RGB format
-    println!("{} {}", size.0, size.1);  // image dims
-    println!("255");  // color range from 0..256
-
-    for y in 0..size.1 {
-        for x in 0..size.0 {
-            let color = image[(y * size.0 + x) as usize];
-            println!("{} {} {}", color.0, color.1, color.2);
-        }
-    }
-}
-*/
 
 
 #[derive(Debug)]
@@ -97,20 +77,23 @@ impl Camera {
 }
 
 
-fn plot<F>(f: F, camera : &Camera, base_image: &DynamicImage) -> ImageBuffer<image::Rgba<u8>, Vec<u8>>
+fn transform<F>(f: F, camera : &Camera, base_image: &Image) -> Image
     where F : Fn(Complex<f64>) -> Complex<f64>
 {
-    let mut image = image::ImageBuffer::new( camera.screen_size.0, camera.screen_size.1);
+    let black = Color::new(0,0,0);
+
+    let mut image = Image::new( camera.screen_size.0, camera.screen_size.1);
 
     for i in 0..camera.number_of_pixels() {
         let start = (i % camera.screen_size.0, i / camera.screen_size.0);
+
         let z = camera.to_real(start);
 
         let fz: RPoint = f(z);
 
         if let Some((x, y)) = camera.to_screen(fz) {
-            let color = base_image.get_pixel(start.0, start.1);
-            image[(x, y)] = color;
+            let color = base_image.at(start);
+//            image.set((x, y), &color).ok();
 
             for dx in 0..3 {
                 if x == 0 || x == image.width()-1 { continue; }
@@ -119,11 +102,12 @@ fn plot<F>(f: F, camera : &Camera, base_image: &DynamicImage) -> ImageBuffer<ima
                     if y == 0 || y == image.height()-1 { continue; }
                     let y = y + dy - 1;
 
-                    let previous = *image.get_pixel(x, y);
-                    if previous.0[0..3] == [0u8; 3]{
-                        image[(x, y)] = color;
-//                    } else {
-//                        image[(x, y)] =
+                    let previous = image.at((x, y));
+                    if previous == black {
+
+                        image.set((x, y), &color).ok();
+                    } else {
+                        image.set((x, y), &color.mix(200, &previous));
                     }
                 }
             }
@@ -133,23 +117,27 @@ fn plot<F>(f: F, camera : &Camera, base_image: &DynamicImage) -> ImageBuffer<ima
 }
 
 fn main() {
+
+    let c = Color::new(10, 0x10, 0xff);
+    let white = Color::new(255, 255, 255);
+    c.mix(0, &white).show();
+//    return;
+
     let camera = Camera {
         center: Complex::new(0.0, 0.0),
         height: 4.0,
         screen_size: (780, 780),
     };
 
-    let base_img = image::open("base.png").unwrap();
+    let base_img = Image::load_png("base.png");
 
-    let maxi = 20;
-    let f = |z| 1.0 / (1.0 - z);
+    let f = |z : Complex<f64>| (z*2.0).sin();
+
+    let maxi = 50;
     for i in 0..maxi {
-        let prop = i as f64 / (maxi as f64- 1.0);
+        let prop = i as f64 / (maxi as f64 - 1.0);
         let g = |z| z * (1.0 - prop) + f(z) * prop;
-        plot(g, &camera, &base_img)
-            .save(format!("out{:03}.jpg", i)).ok();
-
+        transform(g, &camera, &base_img)
+            .save_png(&*format!("out/out{:03}.jpg", i));
     }
-//    print_ppm(image, camera.screen_size);
-
 }
