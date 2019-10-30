@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 num-complex = "0.2.3"
 png = "0.15.0"
+raster = "0.2.0"

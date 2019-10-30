@@ -119,25 +119,34 @@ fn transform<F>(f: F, camera : &Camera, base_image: &Image) -> Image
 fn main() {
 
     let c = Color::new(10, 0x10, 0xff);
-    let white = Color::new(255, 255, 255);
-    c.mix(0, &white).show();
-//    return;
+    let white = Color::new(255, 255, 0);
+    println!("{}", white.to_hsv().s);
 
     let camera = Camera {
         center: Complex::new(0.0, 0.0),
-        height: 4.0,
+        height: 16.2832,
         screen_size: (780, 780),
     };
 
     let base_img = Image::load_png("base.png");
 
-    let f = |z : Complex<f64>| (z*2.0).sin();
+    let f = |z : Complex<f64>| (z).log(2.0);
 
-    let maxi = 50;
+    let maxi = 80;
     for i in 0..maxi {
         let prop = i as f64 / (maxi as f64 - 1.0);
         let g = |z| z * (1.0 - prop) + f(z) * prop;
-        transform(g, &camera, &base_img)
-            .save_png(&*format!("out/out{:03}.jpg", i));
+        let mut img = transform(g, &camera, &base_img);
+
+        // for i in 0..camera.number_of_pixels() {
+        //     let coord = (i % camera.screen_size.0, i / camera.screen_size.0);
+        //     let color = img.at(coord);
+        //     let mut hsv = color.to_hsv();
+        //     hsv.h += (prop * 360.0) as u16;
+        //     hsv.h %= 360;
+// //            hsv.s = (hsv.s + 100.0) / 2.0;
+        //     img.set(coord, &hsv.to_rgb());
+        // }
+        img.save_png(&*format!("out/out{:03}.jpg", i));
     }
 }

@@ -1,3 +1,4 @@
+extern crate raster;
 extern crate png;
 
 // For reading and opening files
@@ -6,8 +7,7 @@ use std::fs::File;
 use std::io::BufWriter;
 // To use encoder.set()
 use png::Encoder;
-use std::ops::Index;
-use std::fmt::Debug;
+use raster::Color as Kevin;
 
 #[derive(Eq, PartialEq)]
 pub struct Color{
@@ -35,13 +35,32 @@ impl Color {
         Color { color: rb | g}
     }
 
+    pub fn to_hsv(&self) -> HSV {
+        let (h, s, v) = Kevin::to_hsv(self.r(), self.g(), self.b());
+        HSV {
+            h, s, v
+        }
+    }
+
     pub fn r(&self) -> u8 { (self.color >> 16) as u8 }
     pub fn g(&self) -> u8 { (self.color >> 8) as u8 }
     pub fn b(&self) -> u8 { self.color as u8 }
 
-
     pub fn show(&self) {
         println!("{:x}", self.color);
+    }
+}
+
+pub struct HSV {
+    pub h: u16,
+    pub s: f32,
+    pub v: f32
+}
+
+impl HSV {
+    pub fn to_rgb(&self) -> Color {
+        let (r, g, b) = Kevin::to_rgb(self.h, self.s, self.v);
+        Color::new(r, g, b)
     }
 }
 
@@ -137,7 +156,7 @@ impl Image {
 
 //
 //impl Index<(u32, u32)> for Image {
-//    type Output = Color;
+//    typ// Check if source RGB is equal to final RGBe Output = Color;
 //
 //    fn index(&self, (x, y): (u32, u32)) -> Self::Output {
 //        let start = (y * self.width + x) * 3;
